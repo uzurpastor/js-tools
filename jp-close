@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Variables
+REMOTE_USER="b"
+REMOTE_HOST="192.168.0.105"
+REMOTE_PORT="8888"
+LOCAL_PORT="8888"
+
+# Step 1: Find and kill the SSH tunnel process
+echo "Searching for SSH tunnel process for port ${LOCAL_PORT}..."
+TUNNEL_PID=$(ps aux | grep "ssh -f -L ${LOCAL_PORT}:localhost:${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST}" | grep -v grep | awk '{print $2}')
+
+if [ -z "$TUNNEL_PID" ]; then
+  echo "No SSH tunnel found for port ${LOCAL_PORT}."
+  exit 1
+fi
+
+# Step 2: Kill the SSH tunnel process
+echo "Detaching SSH tunnel (PID: $TUNNEL_PID)..."
+kill "$TUNNEL_PID"
+
+if [ $? -eq 0 ]; then
+  echo "Tunnel successfully detached."
+else
+  echo "Failed to detach the tunnel. Please check manually."
+fi
+

@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Variables
+REMOTE_USER="b"
+REMOTE_HOST="192.168.0.105"
+REMOTE_PORT="8888"
+LOCAL_PORT="8888"
+TOKEN="$(openssl rand -base64 32)"
+CONDA_ENV="$1"  # Pass the name of the Conda environment as the first argument
+
+if [ -z "$CONDA_ENV" ]; then
+  echo "Error: Please provide the Conda environment name as an argument."
+  echo "Usage: $0 <conda_env>"
+  exit 1
+fi
+
+# Step 1: Start Jupyter Notebook on the remote server
+echo "Starting Jupyter Notebook on the remote server in Conda environment '${CONDA_ENV}'..."
+ssh ${REMOTE_USER}@${REMOTE_HOST} "
+    eval \"\$(/usr/src/any/anaconda3/bin/conda shell.zsh hook)\" &&
+    conda activate ${CONDA_ENV} &&
+    jupyter notebook  --NotebookApp.token="${TOKEN}" --no-browser --port=${REMOTE_PORT} > /dev/null 2>&1 &
+"
+
+if [ $? -ne 0 ]; then
+  echo "Failed to start Jupyter Notebook on the remote server."
+  exit 1
+fi
+
+# Step 2: Establish the SSH tunnel
+echo "Establishing the SSH tunnel..."
+ssh -f -L ${LOCAL_PORT}:localhost:${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} -N
+
+if [ $? -eq 0 ]; then
+  echo "Tunnel successfully established. Access Jupyter Notebook at http://localhost:${LOCAL_PORT}"
+  echo "Token: ${TOKEN}"
+else
+  echo "Failed to establish the SSH tunnel."
+  exit 1
+fi
+
+

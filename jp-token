@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# Variables
+REMOTE_USER="b"
+REMOTE_HOST="192.168.0.105"
+REMOTE_PORT="8888"
+QUIET=false
+
+# Parse arguments
+while getopts "q" opt; do
+  case $opt in
+    q)
+      QUIET=true
+      ;;
+    *)
+      echo "Usage: $0 [-q]"
+      exit 1
+      ;;
+  esac
+done
+
+# Step 1: Find the running Jupyter process on the remote machine
+if [ "$QUIET" = false ]; then
+  echo "Looking for the Jupyter process on the remote machine..."
+fi
+JUPYTER_PID=$(ssh ${REMOTE_USER}@${REMOTE_HOST} "pgrep -f 'jupyter-notebook'")
+
+if [ -z "$JUPYTER_PID" ]; then
+  echo "No running Jupyter Notebook process found."
+  exit 1
+fi
+
+# Step 2: Extract the token from the Jupyter process command
+if [ "$QUIET" = false ]; then
+  echo "Extracting the token from the Jupyter process..."
+fi
+TOKEN=$(ssh ${REMOTE_USER}@${REMOTE_HOST} "
+  ps aux | grep ${JUPYTER_PID} | awk -F'--NotebookApp.token=' '{print \$2}' | awk '{print \$1}'
+")
+
+# Remove any trailing single quote
+TOKEN=$(echo "$TOKEN" | sed "s/'$//")
+
+if [ -z "$TOKEN" ]; then
+  echo "Failed to extract the token."
+  exit 1
+fi
+
+# Step 3: Output the token
+if [ "$QUIET" = true ]; then
+  echo "$TOKEN"
+else
+  echo "Token: ${TOKEN}"
+fi
+
